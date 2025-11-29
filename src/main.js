@@ -25,6 +25,7 @@ const loadMoreBtn = document.querySelector('.load-more-btn');
 let currentQuery = '';
 let currentPage = 1;
 let totalHits = 0;
+let perPage = 15;
 
 searchForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -36,14 +37,14 @@ searchForm.addEventListener('submit', async (event) => {
       title: 'Error',
       message: 'Please enter a search term!',
     });
+    event.target.reset();
     return;
   }
 
-  if (query !== currentQuery) {
-    currentQuery = query;
-    currentPage = 1;
-    clearGallery();
-  }
+  clearGallery();
+
+  currentQuery = query;
+  currentPage = 1;
 
   hideLoadMoreBtn();
   showLoader();
@@ -54,17 +55,22 @@ searchForm.addEventListener('submit', async (event) => {
     hideLoader();
     totalHits = data.totalHits;
 
+    if (data.hits && data.hits.length > 0) {
+      perPage = data.hits.length;
+    }
+
     if (!data.hits || data.hits.length === 0) {
       iziToast.error({
         title: 'Error',
         message: 'Sorry, there are no images matching your search query. Please try again!',
       });
+      event.target.reset();
       return;
     }
 
     createGallery(data.hits);
 
-    const loadedImages = currentPage * 15;
+    const loadedImages = currentPage * perPage;
 
     if (loadedImages < totalHits) {
       showLoadMoreBtn();
@@ -79,8 +85,6 @@ searchForm.addEventListener('submit', async (event) => {
         message: "We're sorry, but you've reached the end of search results.",
       });
     }
-
-    event.target.reset();
   } catch (error) {
     hideLoader();
     console.error(error.message);
@@ -88,6 +92,8 @@ searchForm.addEventListener('submit', async (event) => {
       title: 'Request Failed',
       message: `An error occurred: ${error.message}`,
     });
+  } finally {
+    event.target.reset();
   }
 });
 
@@ -101,18 +107,20 @@ loadMoreBtn.addEventListener('click', async () => {
     const data = await getImagesByQuery(currentQuery, currentPage);
 
     hideLoader();
+
     createGallery(data.hits);
 
     const galleryItem = document.querySelector('.gallery-item');
     if (galleryItem) {
-      const galleryItemHeight = galleryItem.getBoundingClientRect().height;
+      const cardHeight = galleryItem.getBoundingClientRect().height;
+
       window.scrollBy({
-        top: galleryItemHeight * 2,
+        top: cardHeight * 2,
         behavior: 'smooth'
       });
     }
 
-    const loadedImages = currentPage * 15;
+    const loadedImages = currentPage * perPage;
 
     if (loadedImages < totalHits) {
       showLoadMoreBtn();
